@@ -149,19 +149,20 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
                     }
                 }
 
-                audioTrackStrategy = if (ignoreAudio) {
-                    PassThroughTrackStrategy()
-                } else if (includeAudio) {
-                    val sampleRate = DefaultAudioStrategy.SAMPLE_RATE_AS_INPUT
-                    val channels = DefaultAudioStrategy.CHANNELS_AS_INPUT
+                audioTrackStrategy =
+                    if (ignoreAudio && (path.lowercase().endsWith(".mp4") || path.lowercase().endsWith(".mov"))) {
+                        PassThroughTrackStrategy()
+                    } else if (includeAudio) {
+                        val sampleRate = DefaultAudioStrategy.SAMPLE_RATE_AS_INPUT
+                        val channels = DefaultAudioStrategy.CHANNELS_AS_INPUT
 
-                    DefaultAudioStrategy.builder()
-                        .channels(channels)
-                        .sampleRate(sampleRate)
-                        .build()
-                } else {
-                    RemoveTrackStrategy()
-                }
+                        DefaultAudioStrategy.builder()
+                            .channels(channels)
+                            .sampleRate(sampleRate)
+                            .build()
+                    } else {
+                        RemoveTrackStrategy()
+                    }
 
                 val dataSource = if (startTime != null || duration != null) {
                     val source = UriDataSource(context, Uri.parse(path))
