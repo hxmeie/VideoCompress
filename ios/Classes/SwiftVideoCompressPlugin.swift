@@ -36,6 +36,7 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
             getMediaInfo(path, result)
         case "compressVideo":
             let path = args!["path"] as! String
+            let compressPath = args!["compressPath"] as? String
             let quality = args!["quality"] as! NSNumber
             let deleteOrigin = args!["deleteOrigin"] as! Bool
             let startTime = args!["startTime"] as? Double
@@ -44,7 +45,7 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
             let ignoreAudio = args!["ignoreAudio"] as? Bool
             let frameRate = args!["frameRate"] as? Int
             compressVideo(path, quality, deleteOrigin, startTime, duration, includeAudio,
-                          frameRate, result)
+                          frameRate, compressPath, result)
         case "cancelCompression":
             cancelCompression(result)
         case "deleteAllCache":
@@ -177,6 +178,7 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
     
     private func compressVideo(_ path: String,_ quality: NSNumber,_ deleteOrigin: Bool,_ startTime: Double?,
                                _ duration: Double?,_ includeAudio: Bool?,_ frameRate: Int?,
+                               _ compressionPath: String?,
                                _ result: @escaping FlutterResult) {
         let sourceVideoUrl = Utility.getPathUrl(path)
         let sourceVideoType = "mp4"
@@ -184,10 +186,13 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
         let sourceVideoAsset = avController.getVideoAsset(sourceVideoUrl)
         let sourceVideoTrack = avController.getTrack(sourceVideoAsset)
 
-        let uuid = NSUUID()
-        let compressionUrl =
-        Utility.getPathUrl("\(Utility.basePath())/\(Utility.getFileName(path))\(uuid.uuidString).\(sourceVideoType)")
-
+        let compressionUrl: URL
+            if let nonEmptyCompressionPath = compressionPath, nonEmptyCompressionPath != "" { // 当压缩路径不为空时
+                compressionUrl = Utility.getPathUrl(nonEmptyCompressionPath)
+            } else { // 当压缩路径为空时
+                let uuid = NSUUID()
+                compressionUrl = Utility.getPathUrl("\(Utility.basePath())/\(Utility.getFileName(path))\(uuid.uuidString).\(sourceVideoType)")
+            }
         let timescale = sourceVideoAsset.duration.timescale
         let minStartTime = Double(startTime ?? 0)
         
