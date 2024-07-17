@@ -127,6 +127,7 @@ extension Compress on IVideoCompress {
     int? startTime,
     int? duration,
     bool? includeAudio,
+    bool? ignoreAudio,
     int frameRate = 30,
   }) async {
     if (isCompressing) {
@@ -149,6 +150,7 @@ extension Compress on IVideoCompress {
       'startTime': startTime,
       'duration': duration,
       'includeAudio': includeAudio,
+      'ignoreAudio': ignoreAudio,
       'frameRate': frameRate,
     });
 

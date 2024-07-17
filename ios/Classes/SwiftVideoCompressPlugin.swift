@@ -41,6 +41,7 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
             let startTime = args!["startTime"] as? Double
             let duration = args!["duration"] as? Double
             let includeAudio = args!["includeAudio"] as? Bool
+            let ignoreAudio = args!["ignoreAudio"] as? Bool
             let frameRate = args!["frameRate"] as? Int
             compressVideo(path, quality, deleteOrigin, startTime, duration, includeAudio,
                           frameRate, result)
