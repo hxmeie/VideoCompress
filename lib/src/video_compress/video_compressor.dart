@@ -128,7 +128,8 @@ extension Compress on IVideoCompress {
     int? duration,
     bool? includeAudio,
     bool? ignoreAudio,
-    int frameRate = 30,
+    int frameRate = 25,
+    int bitRate = 1000 * 1024
   }) async {
     if (isCompressing) {
       throw StateError('''VideoCompress Error: 
@@ -152,6 +153,7 @@ extension Compress on IVideoCompress {
       'includeAudio': includeAudio,
       'ignoreAudio': ignoreAudio,
       'frameRate': frameRate,
+      'bitRate': bitRate
     });
 
     // ignore: invalid_use_of_protected_member

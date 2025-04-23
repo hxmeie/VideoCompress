@@ -93,8 +93,8 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
                 val duration = call.argument<Int>("duration")
                 val includeAudio = call.argument<Boolean>("includeAudio") ?: true
                 val ignoreAudio = call.argument<Boolean>("ignoreAudio") ?: false
-                val frameRate = if (call.argument<Int>("frameRate") == null) 30 else call.argument<Int>("frameRate")
-
+                val frameRate = call.argument<Int>("frameRate") ?: 25
+                val bitRate = call.argument<Int>("bitRate") ?: 1000 * 1024
                 val destPath = if (compressPath != null && compressPath != "") {
                     compressPath
                 } else {
@@ -108,15 +108,24 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
                 when (quality) {
 
                     0 -> {
-                        videoTrackStrategy = DefaultVideoStrategy.atMost(720).build()
+                        videoTrackStrategy = DefaultVideoStrategy.atMost(720)
+                            .bitRate(bitRate.toLong())
+                            .frameRate(frameRate)
+                            .build()
                     }
 
                     1 -> {
-                        videoTrackStrategy = DefaultVideoStrategy.atMost(360).build()
+                        videoTrackStrategy = DefaultVideoStrategy.atMost(360)
+                            .bitRate(bitRate.toLong())
+                            .frameRate(frameRate)
+                            .build()
                     }
 
                     2 -> {
-                        videoTrackStrategy = DefaultVideoStrategy.atMost(640).build()
+                        videoTrackStrategy = DefaultVideoStrategy.atMost(640)
+                            .bitRate(bitRate.toLong())
+                            .frameRate(frameRate)
+                            .build()
                     }
 
                     3 -> {
@@ -130,22 +139,32 @@ class VideoCompressPlugin : MethodCallHandler, FlutterPlugin {
                     }
 
                     4 -> {
-                        videoTrackStrategy = DefaultVideoStrategy.atMost(480, 640).build()
+                        videoTrackStrategy = DefaultVideoStrategy.atMost(480, 640)
+                            .bitRate(bitRate.toLong())
+                            .frameRate(frameRate)
+                            .build()
                     }
 
                     5 -> {
-                        videoTrackStrategy = DefaultVideoStrategy.atMost(540, 960).build()
+                        videoTrackStrategy = DefaultVideoStrategy.atMost(540, 960)
+                            .bitRate(bitRate.toLong())
+                            .frameRate(frameRate)
+                            .build()
                     }
 
                     6 -> {
                         videoTrackStrategy = DefaultVideoStrategy.atMost(720, 1280)
                             .keyFrameInterval(3f)
-                            .bitRate(1000 * 1000 * 3.toLong())
+                            .bitRate(bitRate.toLong())
+                            .frameRate(frameRate)
                             .build()
                     }
 
                     7 -> {
-                        videoTrackStrategy = DefaultVideoStrategy.atMost(1080, 1920).build()
+                        videoTrackStrategy = DefaultVideoStrategy.atMost(1080, 1920)
+                            .bitRate(bitRate.toLong())
+                            .frameRate(frameRate)
+                            .build()
                     }
                 }
 

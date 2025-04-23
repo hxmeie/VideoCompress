@@ -44,8 +44,9 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
             let includeAudio = args!["includeAudio"] as? Bool
             let ignoreAudio = args!["ignoreAudio"] as? Bool
             let frameRate = args!["frameRate"] as? Int
+            let bitRate = args!["bitRate"] as? Int
             compressVideo(path, quality, deleteOrigin, startTime, duration, includeAudio,
-                          frameRate, compressPath, result)
+                          frameRate, bitRate, compressPath, result)
         case "cancelCompression":
             cancelCompression(result)
         case "deleteAllCache":
@@ -177,7 +178,7 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
     }
     
     private func compressVideo(_ path: String,_ quality: NSNumber,_ deleteOrigin: Bool,_ startTime: Double?,
-                               _ duration: Double?,_ includeAudio: Bool?,_ frameRate: Int?,
+                               _ duration: Double?,_ includeAudio: Bool?,_ frameRate: Int?,_ bitrate: Int?,
                                _ compressionPath: String?,
                                _ result: @escaping FlutterResult) {
         let sourceVideoUrl = Utility.getPathUrl(path)
@@ -214,12 +215,23 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
         exporter.outputFileType = AVFileType.mp4
         exporter.shouldOptimizeForNetworkUse = true
         
-        if frameRate != nil {
-            let videoComposition = AVMutableVideoComposition(propertiesOf: sourceVideoAsset)
-            videoComposition.frameDuration = CMTimeMake(value: 1, timescale: Int32(frameRate!))
-            exporter.videoComposition = videoComposition
-        }
-        
+        // 设置默认帧率
+        let defaultFrameRate = 25
+        let actualFrameRate = frameRate ?? defaultFrameRate
+        let videoComposition = AVMutableVideoComposition(propertiesOf: sourceVideoAsset)
+        videoComposition.frameDuration = CMTimeMake(value: 1, timescale: Int32(actualFrameRate))
+        exporter.videoComposition = videoComposition
+
+        // 设置比特率
+        let defaultBitRate = 1000 * 1024
+        let videoSettings: [String: Any] = [
+            AVVideoCodecKey: AVVideoCodecType.h264,
+            AVVideoCompressionPropertiesKey: [
+                AVVideoAverageBitRateKey: bitRate ?? defaultBitRate // 设置比特率为 1000kbps
+            ]
+        ]
+        exporter.videoOutputSettings = videoSettings
+
         if !isIncludeAudio {
             exporter.timeRange = timeRange
         }
