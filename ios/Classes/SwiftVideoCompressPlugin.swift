@@ -45,7 +45,7 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
             let ignoreAudio = args!["ignoreAudio"] as? Bool
             let frameRate = args!["frameRate"] as? Int
             let bitRate = args!["bitRate"] as? Int
-            compressVideo(path, quality, deleteOrigin, startTime, duration, includeAudio,
+            compressVideo2(path, quality, deleteOrigin, startTime, duration, includeAudio,
                           frameRate, bitRate, compressPath, result)
         case "cancelCompression":
             cancelCompression(result)
@@ -222,16 +222,6 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
         videoComposition.frameDuration = CMTimeMake(value: 1, timescale: Int32(actualFrameRate))
         exporter.videoComposition = videoComposition
 
-        // 设置比特率
-        let defaultBitRate = 1000 * 1024
-        let videoSettings: [String: Any] = [
-            AVVideoCodecKey: AVVideoCodecType.h264,
-            AVVideoCompressionPropertiesKey: [
-                AVVideoAverageBitRateKey: bitRate ?? defaultBitRate // 设置比特率为 1000kbps
-            ]
-        ]
-        exporter.videoOutputSettings = videoSettings
-
         if !isIncludeAudio {
             exporter.timeRange = timeRange
         }
@@ -270,7 +260,288 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
         })
         self.exporter = exporter
     }
-    
+
+     private func compressVideo2(_ path: String,_ quality: NSNumber,_ deleteOrigin: Bool,_ startTime: Double?,
+                                   _ duration: Double?,_ includeAudio: Bool?,_ frameRate: Int?,_ bitrate: Int?,
+                                   _ compressionPath: String?,
+                                   _ result: @escaping FlutterResult) {
+         //原视频地址
+         let sourceVideoUrl = Utility.getPathUrl(path)
+         let sourceVideoType = "mp4"
+         // 创建音视频输入asset
+         let asset = AVAsset(url: sourceVideoUrl)
+         //压缩视频地址
+         let compressionUrl: URL
+             if let nonEmptyCompressionPath = compressionPath, nonEmptyCompressionPath != "" { // 当压缩路径不为空时
+                 compressionUrl = Utility.getPathUrl(nonEmptyCompressionPath)
+             } else { // 当压缩路径为空时
+                 let uuid = NSUUID()
+                 compressionUrl = Utility.getPathUrl("\(Utility.basePath())/\(Utility.getFileName(path))\(uuid.uuidString).\(sourceVideoType)")
+             }
+         // 创建音视频Reader和Writer
+         guard let reader = try? AVAssetReader(asset: asset),
+               let writer = try? AVAssetWriter.init(outputURL: compressionUrl, fileType: AVFileType.mp4) else {
+             self.cancelCompression(result)
+             return
+         }
+         Utility.deleteFile(compressionUrl.absoluteString)
+         //视频输出配置
+         let configVideoOutput: [String : Any] = [kCVPixelBufferPixelFormatTypeKey: NSNumber(value: kCVPixelFormatType_422YpCbCr8)] as! [String: Any]
+
+         //压缩配置
+         let compressionProperties: [String: Any] = [
+            AVVideoAverageBitRateKey: bitrate,  //码率
+            AVVideoExpectedSourceFrameRateKey: frameRate, //帧率
+            AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel
+         ]
+         let videoCodec: String = AVVideoCodecType.h264.rawValue //视频编码
+         var videoSettings: [String: Any] = [
+            AVVideoCodecKey: videoCodec, //视频编码
+            AVVideoWidthKey: 1280,//视频宽（必须填写正确，否则压缩后有问题）
+            AVVideoHeightKey: 720,//视频高（必须填写正确，否则压缩后有问题）
+            AVVideoCompressionPropertiesKey: compressionProperties,
+            AVVideoScalingModeKey: AVVideoScalingModeResizeAspectFill//设置视频缩放方式
+         ]
+
+         //video part
+         guard let videoTrack: AVAssetTrack = (asset.tracks(withMediaType: .video)).first else {
+             self.cancelCompression(result)
+             return
+         }
+         //获取原视频的角度
+         let degree = self.degressFromVideoFileWithURL(videoTrack: videoTrack)
+         //获取原视频的宽高，如果是手机拍摄，一般是宽大，高小，如果是手机自带录屏，那么是高大，宽小
+         let naturalSize = videoTrack.naturalSize
+         if naturalSize.width < naturalSize.height {
+            videoSettings[AVVideoWidthKey] = 720
+            videoSettings[AVVideoHeightKey] = 1280
+         }
+         let videoOutput: AVAssetReaderTrackOutput = AVAssetReaderTrackOutput(track: videoTrack, outputSettings: configVideoOutput)
+         let videoInput: AVAssetWriterInput = AVAssetWriterInput(mediaType: .video, outputSettings: videoSettings)
+         //视频写入的旋转（这句很重要）
+         if let transform = self.getAffineTransform(degree: degree, videoTrack: videoTrack) {
+            videoInput.transform = transform
+         }
+         if reader.canAdd(videoOutput) {
+            reader.add(videoOutput)
+         }
+         if writer.canAdd(videoInput) {
+            writer.add(videoInput)
+         }
+
+         //audio part
+         //音频输出配置
+         let configAudioOutput: [String : Any] = [AVFormatIDKey: NSNumber(value: kAudioFormatLinearPCM)] as! [String: Any]
+         let audioSettings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatMPEG4AAC,
+            AVEncoderBitRateKey: 96000, // 码率
+            AVSampleRateKey: 44100, // 采样率
+            AVNumberOfChannelsKey : 1
+         ]
+         var audioTrack: AVAssetTrack?
+         var audioOutput: AVAssetReaderTrackOutput?
+         var audioInput: AVAssetWriterInput?
+         if let track = (asset.tracks(withMediaType: .audio)).first {
+             audioTrack = track
+             if let audioTrack = audioTrack {
+                     audioOutput = AVAssetReaderTrackOutput(track: audioTrack, outputSettings: configAudioOutput)
+                     audioInput = AVAssetWriterInput(mediaType: .audio, outputSettings: audioSettings)
+                 }
+                 if let audioOutput = audioOutput, reader.canAdd(audioOutput) {
+                     reader.add(audioOutput)
+                 }
+                 if let audioInput = audioInput, writer.canAdd(audioInput) {
+                     writer.add(audioInput)
+                 }
+         }
+
+         // 开始读写
+         reader.startReading()
+         writer.startWriting()
+         writer.startSession(atSourceTime: .zero)
+
+         let group = DispatchGroup()
+         let processingQueue = DispatchQueue(label: "processingQueue")
+         let totalVideoFrames = Int(videoTrack.timeRange.duration.seconds * Double(frameRate ?? 30))
+         var processedVideoFrames = 0
+         var totalAudioFrames: Int?
+         var processedAudioFrames = 0
+         if let audioTrack = audioTrack {
+            totalAudioFrames = Int(audioTrack.timeRange.duration.seconds * 44100)
+            print("音频帧数：\(totalAudioFrames)")
+         }
+         group.enter()
+         videoInput.requestMediaDataWhenReady(on: DispatchQueue(label: "videoOutQueue"), using: {
+            var completedOrFailed = false
+            while (videoInput.isReadyForMoreMediaData) && !completedOrFailed {
+                let sampleBuffer: CMSampleBuffer? = videoOutput.copyNextSampleBuffer()
+                if sampleBuffer != nil {
+                    let result = videoInput.append(sampleBuffer!)
+                    //处理进度
+                    processingQueue.sync{
+                                processedVideoFrames += 1
+                                            let videoProgress = Double(processedVideoFrames) / Double(totalVideoFrames)
+                                            var overallProgress = videoProgress
+                                            if let totalAudioFrames = totalAudioFrames {
+                                                let audioProgress = Double(processedAudioFrames) / Double(totalAudioFrames)
+                                                overallProgress = (videoProgress + audioProgress) / 2
+                                                print("2222->  audioProgress: \(audioProgress), videoProgress: \(videoProgress)")
+                                            }
+                                            //更新进度
+                                            self.updateProgress2(progress: overallProgress)
+                    }
+                } else {
+                    completedOrFailed = true
+                    videoInput.markAsFinished()
+                    group.leave()
+                    break
+                }
+         }
+        })
+             if let audio = audioTrack, let audioOutput = audioOutput, let audioInput = audioInput {
+                 group.enter()
+                 audioInput.requestMediaDataWhenReady(on: DispatchQueue(label: "audioOutQueue"), using: {
+                     var completedOrFailed = false
+                     while (audioInput.isReadyForMoreMediaData) && !completedOrFailed {
+                         let sampleBuffer: CMSampleBuffer? = audioOutput.copyNextSampleBuffer()
+                         if sampleBuffer != nil {
+                             let result = audioInput.append(sampleBuffer!)
+                             processingQueue.sync {
+                             // 更新已处理的样本数
+                             let numSamples = CMSampleBufferGetNumSamples(sampleBuffer!)
+                                processedAudioFrames += numSamples
+                                                            let videoProgress = Double(processedVideoFrames) / Double(totalVideoFrames)
+                                                            var overallProgress = videoProgress
+                                                            if let totalAudioFrames = totalAudioFrames {
+                                                                let audioProgress = Double(processedAudioFrames) / Double(totalAudioFrames)
+                                                                overallProgress = (videoProgress + audioProgress) / 2
+                                                                print("11111->  audioProgress: \(audioProgress), videoProgress: \(videoProgress)")
+                                                            }
+                                                             //更新进度
+                                    self.updateProgress2(progress: overallProgress)
+                             }
+                         } else {
+                             completedOrFailed = true
+                             audioInput.markAsFinished()
+                             group.leave()
+                             break
+                         }
+                     }
+                 })
+             }
+
+             group.notify(queue: DispatchQueue.main) {
+                 // 检查 AVAssetReader 的状态，如果它还在读取中，则取消读取操作
+                 if reader.status == .reading {
+                     reader.cancelReading()
+                 }
+                 // 根据 AVAssetWriter 的不同状态进行不同的处理
+                 switch writer.status {
+                 case .writing:
+                     // 如果还在写入中，则调用 finishWriting 方法完成写入操作，并在完成后执行回调
+                     writer.finishWriting(completionHandler: {
+                         // 在主线程上延迟 0.3 秒后执行后续操作
+                         DispatchQueue.main.asyncAfter(deadline: DispatchTime.now() + 0.3, execute: {
+                         print("完成啦啦啦啦啦啦啦")
+                              if self.stopCommand {
+                                                  self.stopCommand = false
+                                                  var json = self.getMediaInfoJson(path)
+                                                  json["isCancel"] = true
+                                                  let jsonString = Utility.keyValueToJson(json)
+                                                  result(jsonString) // 直接调用，移除 return
+                                              } else {
+                                                  if deleteOrigin {
+                                                      let fileManager = FileManager.default
+                                                      do {
+                                                          if fileManager.fileExists(atPath: path) {
+                                                              try fileManager.removeItem(atPath: path)
+                                                          }
+                                                          self.stopCommand = false
+                                                      } catch {
+                                                          print(error)
+                                                      }
+                                                  }
+                                                  var json = self.getMediaInfoJson(Utility.excludeEncoding(compressionUrl.path))
+                                                  json["isCancel"] = false
+                                                  let jsonString = Utility.keyValueToJson(json)
+                                                  result(jsonString) // 直接调用，移除 return
+                                              }
+                        })
+                     })
+                 case .cancelled:
+                     self.cancelCompression(result)
+                 case .failed:
+                     // 如果写入操作失败，打印失败信息和错误详情
+                     print("$$$ compress failed", writer.error)
+                     self.cancelCompression(result)
+                 case .completed:
+                     // 如果写入操作已完成，打印完成信息
+                     print("$$$ compress completed")
+                 case .unknown:
+                     // 如果写入操作状态未知，打印未知信息
+                     print("$$$ compress unknown")
+                 }
+             }
+    }
+
+    @objc private func updateProgress2(progress: Double) {
+        if(!stopCommand) {
+            channel.invokeMethod("updateProgress", arguments: "\(progress * 100)")
+        }
+    }
+
+    //获取视频的角度
+    private func degressFromVideoFileWithURL(videoTrack: AVAssetTrack)->Int {
+        var degress = 0
+
+        let t: CGAffineTransform = videoTrack.preferredTransform
+        if(t.a == 0 && t.b == 1.0 && t.c == -1.0 && t.d == 0){
+            // Portrait
+            degress = 90
+        }else if(t.a == 0 && t.b == -1.0 && t.c == 1.0 && t.d == 0){
+            // PortraitUpsideDown
+            degress = 270
+        }else if(t.a == 1.0 && t.b == 0 && t.c == 0 && t.d == 1.0){
+            // LandscapeRight
+            degress = 0
+        }else if(t.a == -1.0 && t.b == 0 && t.c == 0 && t.d == -1.0){
+            // LandscapeLeft
+            degress = 180
+        }
+        return degress
+    }
+
+
+    private func getAffineTransform(degree: Int, videoTrack: AVAssetTrack) -> CGAffineTransform? {
+        var translateToCenter: CGAffineTransform?
+        var mixedTransform: CGAffineTransform?
+
+        switch degree {
+        case 90:
+            // 视频旋转90度，home按键在左
+            translateToCenter = CGAffineTransform(translationX: videoTrack.naturalSize.height, y: 0.0)
+            if let translate = translateToCenter {
+               mixedTransform = translate.rotated(by: Double.pi / 2)
+            }
+        case 180:
+            // 视频旋转180度，home按键在上
+            translateToCenter = CGAffineTransform(translationX: videoTrack.naturalSize.width, y: videoTrack.naturalSize.height)
+            if let translate = translateToCenter {
+                mixedTransform = translate.rotated(by: Double.pi)
+            }
+        case 270:
+            // 视频旋转270度，home按键在右
+            translateToCenter = CGAffineTransform(translationX: 0.0, y: videoTrack.naturalSize.width)
+            if let translate = translateToCenter {
+               mixedTransform = translate.rotated(by: Double.pi / 2 * 3)
+            }
+        default:
+            break
+        }
+
+        return mixedTransform
+    }
+
     private func cancelCompression(_ result: FlutterResult) {
         stopCommand = true
         exporter?.cancelExport()
