@@ -223,14 +223,14 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
         exporter.videoComposition = videoComposition
 
         // 设置比特率
-        let defaultBitRate = 1000 * 1024
-        let videoSettings: [String: Any] = [
-            AVVideoCodecKey: AVVideoCodecType.h264,
-            AVVideoCompressionPropertiesKey: [
-                AVVideoAverageBitRateKey: bitRate ?? defaultBitRate // 设置比特率为 1000kbps
-            ]
-        ]
-        exporter.videoOutputSettings = videoSettings
+//         let defaultBitRate = 1000 * 1024
+//         let videoSettings: [String: Any] = [
+//             AVVideoCodecKey: AVVideoCodecType.h264,
+//             AVVideoCompressionPropertiesKey: [
+//                 AVVideoAverageBitRateKey: bitRate ?? defaultBitRate // 设置比特率为 1000kbps
+//             ]
+//         ]
+//         exporter.videoOutputSettings = videoSettings
 
         if !isIncludeAudio {
             exporter.timeRange = timeRange
