@@ -368,7 +368,7 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
          var processedAudioFrames = 0
          if let audioTrack = audioTrack {
             totalAudioFrames = Int(audioTrack.timeRange.duration.seconds * 44100)
-            print("音频帧数：\(totalAudioFrames)")
+//             print("音频帧数：\(totalAudioFrames)")
          }
          group.enter()
          videoInput.requestMediaDataWhenReady(on: DispatchQueue(label: "videoOutQueue"), using: {
@@ -385,7 +385,7 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
                                             if let totalAudioFrames = totalAudioFrames {
                                                 let audioProgress = Double(processedAudioFrames) / Double(totalAudioFrames)
                                                 overallProgress = (videoProgress + audioProgress) / 2
-                                                print("2222->  audioProgress: \(audioProgress), videoProgress: \(videoProgress)")
+//                                                 print("2222->  audioProgress: \(audioProgress), videoProgress: \(videoProgress)")
                                             }
                                             //更新进度
                                             self.updateProgress2(progress: overallProgress)
@@ -415,7 +415,7 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
                                                             if let totalAudioFrames = totalAudioFrames {
                                                                 let audioProgress = Double(processedAudioFrames) / Double(totalAudioFrames)
                                                                 overallProgress = (videoProgress + audioProgress) / 2
-                                                                print("11111->  audioProgress: \(audioProgress), videoProgress: \(videoProgress)")
+//                                                                 print("11111->  audioProgress: \(audioProgress), videoProgress: \(videoProgress)")
                                                             }
                                                              //更新进度
                                     self.updateProgress2(progress: overallProgress)
