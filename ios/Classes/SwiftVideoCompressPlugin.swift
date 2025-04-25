@@ -293,7 +293,7 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
          //压缩配置
          let compressionProperties: [String: Any] = [
             AVVideoAverageBitRateKey: bitrate,  //码率
-            AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel
+            AVVideoProfileLevelKey: AVVideoProfileLevelH264Baseline30
          ]
          let videoCodec: String = AVVideoCodecType.h264.rawValue //视频编码
          var videoSettings: [String: Any] = [
@@ -323,7 +323,6 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
          if let transform = self.getAffineTransform(degree: degree, videoTrack: videoTrack) {
             videoInput.transform = transform
          }
-         videoInput.mediaTimeScale = CMTimeScale(30) // 设置时间刻度为30
          if reader.canAdd(videoOutput) {
             reader.add(videoOutput)
          }
