@@ -365,7 +365,7 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
          let group = DispatchGroup()
          let processingQueue = DispatchQueue(label: "processingQueue")
          let totalVideoFrames = Int(videoTrack.timeRange.duration.seconds * Double(frameRate ?? 30))
-         var processedVideoFrames = 0
+         var processedVideoFrames: Double = 0.0
          var totalAudioFrames: Int?
          var processedAudioFrames = 0
          let ratio = originFrameRate / (frameRate ?? 30)
@@ -384,7 +384,7 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
                     processingQueue.sync {
                     let ratioDouble = Double(ratio)
                     let safeRatio = ratioDouble != 0 ? ratioDouble : 1.0  // 处理除零情况
-                    processedVideoFrames += Int(round(1.0 / safeRatio))
+                    processedVideoFrames += 1.0 / safeRatio
                       let videoProgress = Double(processedVideoFrames) / Double(totalVideoFrames)
                       var overallProgress = videoProgress
                       if let totalAudioFrames = totalAudioFrames {
