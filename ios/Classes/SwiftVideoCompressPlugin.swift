@@ -309,7 +309,7 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
              self.cancelCompression(result)
              return
          }
-         let originFrameRate = videoTrack.nominalFrameRate
+         let originFrameRate = Int(round(videoTrack.nominalFrameRate))
          //获取原视频的角度
          let degree = self.degressFromVideoFileWithURL(videoTrack: videoTrack)
          //获取原视频的宽高，如果是手机拍摄，一般是宽大，高小，如果是手机自带录屏，那么是高大，宽小
