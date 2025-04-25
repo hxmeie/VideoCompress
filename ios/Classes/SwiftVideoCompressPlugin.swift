@@ -293,7 +293,7 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
          //压缩配置
          let compressionProperties: [String: Any] = [
             AVVideoAverageBitRateKey: bitrate,  //码率
-            AVVideoProfileLevelKey: AVVideoProfileLevelH264Main30
+            AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel
          ]
          let videoCodec: String = AVVideoCodecType.h264.rawValue //视频编码
          var videoSettings: [String: Any] = [
@@ -309,6 +309,7 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
              self.cancelCompression(result)
              return
          }
+         let originFrameRate = videoTrack.nominalFrameRate
          //获取原视频的角度
          let degree = self.degressFromVideoFileWithURL(videoTrack: videoTrack)
          //获取原视频的宽高，如果是手机拍摄，一般是宽大，高小，如果是手机自带录屏，那么是高大，宽小
@@ -367,6 +368,7 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
          var processedVideoFrames = 0
          var totalAudioFrames: Int?
          var processedAudioFrames = 0
+         let ratio = originFrameRate / frameRate
          if let audioTrack = audioTrack {
             totalAudioFrames = Int(audioTrack.timeRange.duration.seconds * 44100)
 //             print("音频帧数：\(totalAudioFrames)")
@@ -380,7 +382,7 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
                     let result = videoInput.append(sampleBuffer!)
                     //处理进度
                     processingQueue.sync {
-                         processedVideoFrames += 1
+                         processedVideoFrames += Int(round(1/ratio))
                       let videoProgress = Double(processedVideoFrames) / Double(totalVideoFrames)
                       var overallProgress = videoProgress
                       if let totalAudioFrames = totalAudioFrames {
