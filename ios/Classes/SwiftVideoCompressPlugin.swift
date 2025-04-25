@@ -368,7 +368,7 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
          var processedVideoFrames = 0
          var totalAudioFrames: Int?
          var processedAudioFrames = 0
-         let ratio = originFrameRate / frameRate
+         let ratio = originFrameRate / (frameRate ?? 30)
          if let audioTrack = audioTrack {
             totalAudioFrames = Int(audioTrack.timeRange.duration.seconds * 44100)
 //             print("音频帧数：\(totalAudioFrames)")
