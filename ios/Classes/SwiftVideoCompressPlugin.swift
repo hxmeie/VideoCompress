@@ -382,7 +382,9 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
                     let result = videoInput.append(sampleBuffer!)
                     //处理进度
                     processingQueue.sync {
-                         processedVideoFrames += Int(round(1/ratio))
+                    let ratioDouble = Double(ratio)
+                    let safeRatio = ratioDouble != 0 ? ratioDouble : 1.0  // 处理除零情况
+                    processedVideoFrames += Int(round(1.0 / safeRatio))
                       let videoProgress = Double(processedVideoFrames) / Double(totalVideoFrames)
                       var overallProgress = videoProgress
                       if let totalAudioFrames = totalAudioFrames {
