@@ -293,7 +293,7 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
          //压缩配置
          let compressionProperties: [String: Any] = [
             AVVideoAverageBitRateKey: bitrate,  //码率
-            AVVideoProfileLevelKey: AVVideoProfileLevelH264Baseline30
+            AVVideoProfileLevelKey: AVVideoProfileLevelH264Main30
          ]
          let videoCodec: String = AVVideoCodecType.h264.rawValue //视频编码
          var videoSettings: [String: Any] = [
