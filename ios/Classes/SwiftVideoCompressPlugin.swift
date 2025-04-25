@@ -293,7 +293,6 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
          //压缩配置
          let compressionProperties: [String: Any] = [
             AVVideoAverageBitRateKey: bitrate,  //码率
-            AVVideoExpectedSourceFrameRateKey: frameRate, //帧率
             AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel
          ]
          let videoCodec: String = AVVideoCodecType.h264.rawValue //视频编码
@@ -301,6 +300,7 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
             AVVideoCodecKey: videoCodec, //视频编码
             AVVideoWidthKey: 1280,//视频宽（必须填写正确，否则压缩后有问题）
             AVVideoHeightKey: 720,//视频高（必须填写正确，否则压缩后有问题）
+            AVVideoExpectedSourceFrameRateKey: frameRate, //帧率
             AVVideoCompressionPropertiesKey: compressionProperties,
             AVVideoScalingModeKey: AVVideoScalingModeResizeAspectFill//设置视频缩放方式
          ]
@@ -356,10 +356,7 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
                      writer.add(audioInput)
                  }
          }
-        // 视频写入时控制帧率
-        let timeScale = CMTimeScale(600) // 可以根据需要调整
-        let frameDuration = CMTimeMake(value: 1, timescale: timeScale)
-        var presentationTime = CMTime.zero
+
          // 开始读写
          reader.startReading()
          writer.startWriting()
@@ -381,10 +378,8 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
             while (videoInput.isReadyForMoreMediaData) && !completedOrFailed {
                 let sampleBuffer: CMSampleBuffer? = videoOutput.copyNextSampleBuffer()
                 if sampleBuffer != nil {
-                    let presentationTimeStamp = CMTimeAdd(presentationTime, frameDuration)
-                    let result = videoInput.append(sampleBuffer!, withPresentationTime: presentationTimeStamp)
+                    let result = videoInput.append(sampleBuffer!)
                     if result {
-                            presentationTime = presentationTimeStamp
                             //处理进度
                             processingQueue.sync {
                                 processedVideoFrames += 1
