@@ -300,7 +300,6 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
             AVVideoCodecKey: videoCodec, //视频编码
             AVVideoWidthKey: 1280,//视频宽（必须填写正确，否则压缩后有问题）
             AVVideoHeightKey: 720,//视频高（必须填写正确，否则压缩后有问题）
-            AVVideoExpectedSourceFrameRateKey: frameRate, //帧率
             AVVideoCompressionPropertiesKey: compressionProperties,
             AVVideoScalingModeKey: AVVideoScalingModeResizeAspectFill//设置视频缩放方式
          ]
@@ -324,6 +323,7 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
          if let transform = self.getAffineTransform(degree: degree, videoTrack: videoTrack) {
             videoInput.transform = transform
          }
+         videoInput.mediaTimeScale = CMTimeScale(30) // 设置时间刻度为30
          if reader.canAdd(videoOutput) {
             reader.add(videoOutput)
          }
@@ -380,18 +380,20 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
                 if sampleBuffer != nil {
                     let result = videoInput.append(sampleBuffer!)
                     //处理进度
-                                                processingQueue.sync {
-                                                    processedVideoFrames += 1
-                                                    let videoProgress = Double(processedVideoFrames) / Double(totalVideoFrames)
-                                                    var overallProgress = videoProgress
-                                                    if let totalAudioFrames = totalAudioFrames {
-                                                        let audioProgress = Double(processedAudioFrames) / Double(totalAudioFrames)
-                                                        overallProgress = (videoProgress + audioProgress) / 2
-                                                        // print("2222->  audioProgress: \(audioProgress), videoProgress: \(videoProgress)")
-                                                    }
-                                                    //更新进度
-                                                    self.updateProgress2(progress: overallProgress)
-                                                }
+                    if (result) {
+                        processingQueue.sync {
+                                                                            processedVideoFrames += 1
+                                                                            let videoProgress = Double(processedVideoFrames) / Double(totalVideoFrames)
+                                                                            var overallProgress = videoProgress
+                                                                            if let totalAudioFrames = totalAudioFrames {
+                                                                                let audioProgress = Double(processedAudioFrames) / Double(totalAudioFrames)
+                                                                                overallProgress = (videoProgress + audioProgress) / 2
+                                                                                // print("2222->  audioProgress: \(audioProgress), videoProgress: \(videoProgress)")
+                                                                            }
+                                                                            //更新进度
+                                                                            self.updateProgress2(progress: overallProgress)
+                                                                        }
+                    }
                 } else {
                     completedOrFailed = true
                     videoInput.markAsFinished()
