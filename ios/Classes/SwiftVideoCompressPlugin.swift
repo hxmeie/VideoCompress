@@ -379,21 +379,19 @@ public class SwiftVideoCompressPlugin: NSObject, FlutterPlugin {
                 let sampleBuffer: CMSampleBuffer? = videoOutput.copyNextSampleBuffer()
                 if sampleBuffer != nil {
                     let result = videoInput.append(sampleBuffer!)
-                    if result {
-                            //处理进度
-                            processingQueue.sync {
-                                processedVideoFrames += 1
-                                let videoProgress = Double(processedVideoFrames) / Double(totalVideoFrames)
-                                var overallProgress = videoProgress
-                                if let totalAudioFrames = totalAudioFrames {
-                                    let audioProgress = Double(processedAudioFrames) / Double(totalAudioFrames)
-                                    overallProgress = (videoProgress + audioProgress) / 2
-                                    // print("2222->  audioProgress: \(audioProgress), videoProgress: \(videoProgress)")
-                                }
-                                //更新进度
-                                self.updateProgress2(progress: overallProgress)
-                            }
-                        }
+                    //处理进度
+                                                processingQueue.sync {
+                                                    processedVideoFrames += 1
+                                                    let videoProgress = Double(processedVideoFrames) / Double(totalVideoFrames)
+                                                    var overallProgress = videoProgress
+                                                    if let totalAudioFrames = totalAudioFrames {
+                                                        let audioProgress = Double(processedAudioFrames) / Double(totalAudioFrames)
+                                                        overallProgress = (videoProgress + audioProgress) / 2
+                                                        // print("2222->  audioProgress: \(audioProgress), videoProgress: \(videoProgress)")
+                                                    }
+                                                    //更新进度
+                                                    self.updateProgress2(progress: overallProgress)
+                                                }
                 } else {
                     completedOrFailed = true
                     videoInput.markAsFinished()
